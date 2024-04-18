@@ -128,7 +128,7 @@ export default function ChatRoomEntry() {
 	return (
 		<div className='p-8 h-screen bg-slate-900'>
 			<header className='flex justify-between'>
-				<h1 className=''>RealTimeChat</h1>
+				<h1 className=''>WebSocket-Chat</h1>
 				<Status
 					status={ws ? 'Você está online' : 'Você está offline'}
 					color={ws ? 'green' : 'red'}
