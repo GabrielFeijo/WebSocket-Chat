@@ -1,113 +1,206 @@
-import Image from "next/image";
+'use client';
+import { Button, Input, message as antMessage } from 'antd';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+	SendOutlined,
+	WechatOutlined,
+	LogoutOutlined,
+} from '@ant-design/icons';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Socket, io } from 'socket.io-client';
+import Messages from './components/Messages';
+import Status from './components/Status';
 
-export default function Home() {
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:size-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
+export interface IMessage {
+	action: string;
+	message: string;
+	roomId: string;
+	sender: string;
+	createdAt: Date;
+}
 
-      <div className="relative z-[-1] flex place-items-center before:absolute before:h-[300px] before:w-full before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 sm:before:w-[480px] sm:after:w-[240px] before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
+export default function ChatRoomEntry() {
+	const searchParams = useSearchParams();
+	const [email, setEmail] = useState<string>(() => {
+		if (searchParams.has('email')) {
+			return searchParams.get('email') || '';
+		}
 
-      <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
+		return '';
+	});
+	const [ws, setWs] = useState<Socket | undefined>(undefined);
+	const [messages, setMessages] = useState<IMessage[]>([]);
+	const [message, setMessage] = useState('');
+	const router = useRouter();
+	const ref = useRef<HTMLDivElement>(null);
 
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
+	const enterChat = () => {
+		if (!email) {
+			return;
+		}
 
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Explore starter templates for Next.js.
-          </p>
-        </a>
+		const ws = io('http://localhost:3333');
+		setWs(ws);
+		ws.on('connect', () => {
+			ws.emit('join-room', {
+				action: 'join-room',
+				message: 'joining room',
+				roomId: '123456',
+				sender: `${email}`,
+				createdAt: Date.now(),
+			});
 
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-balance text-sm opacity-50">
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  );
+			setMessage('');
+			antMessage.success(`Websocket opened!`);
+		});
+
+		ws.on('disconnect', () => {
+			antMessage.success(`Websocket closed!`);
+			setWs(undefined);
+		});
+
+		ws.on('receive-msg', (data: IMessage) => {
+			setMessagesFnc(data);
+		});
+
+		ws.on('error', (error) => {
+			antMessage.error(`Websocket error: ${error}`);
+		});
+	};
+
+	const sendMessage = useCallback(() => {
+		if (message && message !== '') {
+			const data = {
+				action: 'send-message',
+				message: message,
+				roomId: '123456',
+				sender: `${email}`,
+				createdAt: Date.now(),
+			};
+
+			ws?.emit('send-message', data);
+			setMessage('');
+
+			setTimeout(() => {
+				ref.current?.scroll({
+					top: ref.current.scrollHeight,
+					behavior: 'smooth',
+				});
+			}, 200);
+		}
+	}, [message, ws, email]);
+
+	const handleLogout = () => {
+		ws?.disconnect();
+		router.push('/');
+	};
+
+	const setMessagesFnc = (value: IMessage) => {
+		setMessages((prev) => [
+			...prev,
+			{ ...value, createdAt: new Date(value.createdAt) },
+		]);
+	};
+
+	const setCurrentEmail = (text: string) => {
+		const url = new URL(window.location.toString());
+
+		setEmail(text);
+		url.searchParams.set('email', text);
+		window.history.pushState({}, '', url);
+	};
+
+	useEffect(() => {
+		function keyDownHandler(e: globalThis.KeyboardEvent) {
+			if (e.key === 'Enter' && ws) {
+				e.preventDefault();
+				sendMessage();
+			}
+		}
+
+		document.addEventListener('keydown', keyDownHandler);
+
+		return () => {
+			document.removeEventListener('keydown', keyDownHandler);
+		};
+	}, [sendMessage, ws]);
+
+	return (
+		<div className='p-8 h-screen'>
+			<header className='flex justify-between'>
+				<h1 className=''>RealTimeChat</h1>
+				<Status
+					status={ws ? 'Você está online' : 'Você está offline'}
+					color={ws ? 'green' : 'red'}
+				/>
+				<Button
+					type='primary'
+					icon={<LogoutOutlined />}
+					onClick={handleLogout}
+				>
+					Sair
+				</Button>
+			</header>
+			<main className='pt-4 max-w-[40rem] mx-auto h-[90%] mt-[2.5%]'>
+				{ws ? (
+					<div className='flex flex-col justify-end flex-1 h-full bg-slate-900 rounded-xl p-4'>
+						<div
+							className='overflow-y-auto '
+							ref={ref}
+						>
+							<Messages
+								messages={messages}
+								currentUser={email}
+							/>
+						</div>
+
+						<div className='flex gap-1  '>
+							<Input
+								size='large'
+								placeholder='Escreva sua mensagem'
+								onChange={(event) => setMessage(event.target.value)}
+								value={message}
+							/>
+							<Button
+								type='primary'
+								icon={<SendOutlined />}
+								onClick={sendMessage}
+								className=' h-full'
+							>
+								Enviar Mensagem
+							</Button>
+						</div>
+					</div>
+				) : (
+					<form
+						onSubmit={enterChat}
+						className='bg-slate-900 space-y-6 text-center px-10 py-6 rounded-md w-fit mx-auto mt-4'
+					>
+						<label
+							htmlFor='email'
+							className='text-xl font-medium'
+						>
+							Informe seu melhor email
+						</label>
+						<Input
+							type='email'
+							id='email'
+							value={email}
+							onChange={(e) => setCurrentEmail(e.target.value)}
+							placeholder='Email'
+							className='w-fit block mx-auto'
+						/>
+
+						<Button
+							type='primary'
+							htmlType='submit'
+							icon={<WechatOutlined />}
+						>
+							Acessar o bate-papo
+						</Button>
+					</form>
+				)}
+			</main>
+		</div>
+	);
 }
