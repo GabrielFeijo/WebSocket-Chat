@@ -39,7 +39,7 @@ export default function ChatRoomEntry() {
 			return;
 		}
 
-		const ws = io('http://localhost:3333');
+		const ws = io(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3333');
 		setWs(ws);
 		ws.on('connect', () => {
 			ws.emit('join-room', {
@@ -126,7 +126,7 @@ export default function ChatRoomEntry() {
 	}, [sendMessage, ws]);
 
 	return (
-		<div className='p-8 h-screen'>
+		<div className='p-8 h-screen bg-slate-900'>
 			<header className='flex justify-between'>
 				<h1 className=''>RealTimeChat</h1>
 				<Status
@@ -141,9 +141,9 @@ export default function ChatRoomEntry() {
 					Sair
 				</Button>
 			</header>
-			<main className='pt-4 max-w-[40rem] mx-auto h-[90%] mt-[2.5%]'>
+			<main className='p-4 w-full mx-auto h-full'>
 				{ws ? (
-					<div className='flex flex-col justify-end flex-1 h-full bg-slate-900 rounded-xl p-4'>
+					<div className='flex flex-col justify-end flex-1 h-full  rounded p-4 '>
 						<div
 							className='overflow-y-auto '
 							ref={ref}
@@ -154,7 +154,7 @@ export default function ChatRoomEntry() {
 							/>
 						</div>
 
-						<div className='flex gap-1  '>
+						<div className='flex gap-1'>
 							<Input
 								size='large'
 								placeholder='Escreva sua mensagem'
@@ -174,7 +174,7 @@ export default function ChatRoomEntry() {
 				) : (
 					<form
 						onSubmit={enterChat}
-						className='bg-slate-900 space-y-6 text-center px-10 py-6 rounded-md w-fit mx-auto mt-4'
+						className='bg-black/20 space-y-6 text-center p-6 rounded-md w-fit mx-auto mt-4'
 					>
 						<label
 							htmlFor='email'
